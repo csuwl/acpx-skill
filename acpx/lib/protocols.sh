@@ -28,7 +28,7 @@ read_into_array() {
 _detect_available_agents() {
   local found=""
   for cmd in claude codex gemini opencode cursor copilot pi qwen openclaw; do
-    if command -v "acpx-${cmd}" &>/dev/null 2>&1 || acpx "${cmd}" exec "echo ok" &>/dev/null 2>&1; then
+    if command -v "acpx-${cmd}" &>/dev/null || acpx "${cmd}" exec "echo ok" &>/dev/null; then
       found="${found}${cmd}"$'\n'
     fi
   done
@@ -69,6 +69,22 @@ _run_agent_execute() {
   acpx --format quiet "$agent" -s "$session" "$prompt"
 }
 
+# ─── Wait for PIDs and report failures ───────────────────────────
+# Arguments: pid1:agent1 pid2:agent2 ...
+
+_wait_agents() {
+  local failed=0
+  for spec in "$@"; do
+    local pid="${spec%%:*}"
+    local agent="${spec#*:}"
+    if ! wait "$pid" 2>/dev/null; then
+      echo "==> WARNING: Agent '${agent}' (pid ${pid}) failed" >&2
+      failed=1
+    fi
+  done
+  return $failed
+}
+
 # ─── Protocol 1: Parallel Fan-Out ──────────────────────────────
 
 protocol_fanout() {
@@ -89,19 +105,17 @@ protocol_fanout() {
 
   echo "==> Protocol 1: Fan-Out | ${#agents[@]} agent(s) | Plan phase"
 
-  local pids=()
+  local -a pid_specs=()
   for agent in "${agents[@]}"; do
     local session="fanout-${agent}"
     acpx "${agent}" sessions new --name "$session" 2>/dev/null || true
 
     _run_agent_plan "$agent" "$session" "$task" \
       | workspace_write_agent_output "$agent" 1 &
-    pids+=($!)
+    pid_specs+=("$!:${agent}")
   done
 
-  for pid in "${pids[@]}"; do
-    wait "$pid" 2>/dev/null || true
-  done
+  _wait_agents "${pid_specs[@]}" || true
 
   # ── Synthesize ──
   echo "==> Synthesizing..."
@@ -135,16 +149,16 @@ protocol_deliberation() {
 
   echo "==> Protocol 2: Deliberation | ${#agents[@]} agent(s) | Round 1 (Plan)"
 
-  local pids=()
+  local -a pid_specs=()
   for agent in "${agents[@]}"; do
     local session="delib-${agent}"
     acpx "${agent}" sessions new --name "$session" 2>/dev/null || true
 
     _run_agent_plan "$agent" "$session" "$task" \
       | workspace_write_agent_output "$agent" 1 &
-    pids+=($!)
+    pid_specs+=("$!:${agent}")
   done
-  for pid in "${pids[@]}"; do wait "$pid" 2>/dev/null || true; done
+  _wait_agents "${pid_specs[@]}" || true
 
   # ── Consensus check ──
   local consensus
@@ -235,7 +249,7 @@ protocol_role_council() {
   echo "    Agents: ${agents[*]}"
   echo "    Roles:  ${roles[*]}"
 
-  local pids=()
+  local -a pid_specs=()
   local i=0
   for agent in "${agents[@]}"; do
     local role="${roles[$i]:-neutral}"
@@ -250,10 +264,10 @@ ${task}"
 
     _run_agent_plan "$agent" "$session" "$r1_prompt" \
       | workspace_write_agent_output "$agent" 1 &
-    pids+=($!)
+    pid_specs+=("$!:${agent}")
     i=$((i + 1))
   done
-  for pid in "${pids[@]}"; do wait "$pid" 2>/dev/null || true; done
+  _wait_agents "${pid_specs[@]}" || true
 
   # ── Consensus check ──
   local consensus
@@ -276,7 +290,7 @@ ${task}"
   local all_r1
   all_r1=$(workspace_gather_round 1)
 
-  pids=()
+  pid_specs=()
   i=0
   for agent in "${agents[@]}"; do
     local role="${roles[$i]:-neutral}"
@@ -290,10 +304,10 @@ ${all_r1}"
 
     _run_agent_plan "$agent" "$session" "$r2_prompt" \
       | workspace_write_agent_output "$agent" 2 &
-    pids+=($!)
+    pid_specs+=("$!:${agent}")
     i=$((i + 1))
   done
-  for pid in "${pids[@]}"; do wait "$pid" 2>/dev/null || true; done
+  _wait_agents "${pid_specs[@]}" || true
 
   # ── Synthesize ──
   echo "==> Synthesizing..."
@@ -346,8 +360,7 @@ ${task}" | workspace_write_agent_output "advocate" 1 &
 ${task}" | workspace_write_agent_output "critic" 1 &
   local pid2=$!
 
-  wait "$pid1" 2>/dev/null || true
-  wait "$pid2" 2>/dev/null || true
+  _wait_agents "${pid1}:advocate" "${pid2}:critic" || true
 
   # Round 2: Cross-arguments
   workspace_set_round 2
@@ -369,8 +382,7 @@ ${bull_r1}
 Counter-argue. Address each claim specifically." | workspace_write_agent_output "critic" 2 &
   pid2=$!
 
-  wait "$pid1" 2>/dev/null || true
-  wait "$pid2" 2>/dev/null || true
+  _wait_agents "${pid1}:advocate" "${pid2}:critic" || true
 
   # Judge synthesis
   echo "==> Judge synthesizing..."
@@ -420,6 +432,10 @@ protocol_pipeline() {
   local writer="${agents[0]:-claude}"
   local reviewer="${agents[1]:-codex}"
   local editor="${agents[2]:-$writer}"
+  local editor_uses_writer_session=0
+  if [[ "$editor" == "$writer" ]]; then
+    editor_uses_writer_session=1
+  fi
 
   workspace_init "$task" "pipeline"
   workspace_set_phase "plan"
@@ -444,16 +460,27 @@ ${writer_output}
 
 Rate each finding: CRITICAL/HIGH/MEDIUM/LOW." | workspace_write_agent_output "reviewer" 1
 
-  # Step 3: Edit
+  # Step 3: Edit (use editor's own session if different from writer)
   echo "==> [Plan] Editor revising..."
   local review_output
   review_output=$(workspace_read_agent_output "reviewer" 1)
 
-  _run_agent_plan "$writer" "pipe-writer" "Incorporate this review feedback into your original analysis:
+  if [[ "$editor_uses_writer_session" -eq 0 ]]; then
+    # Editor is a different agent — create its own session
+    acpx "$editor" sessions new --name "pipe-editor" 2>/dev/null || true
+    _run_agent_plan "$editor" "pipe-editor" "Incorporate this review feedback into your original analysis:
 ${review_output}
 
 Original output:
 ${writer_output}" | workspace_write_agent_output "editor" 1
+  else
+    # Editor is same as writer — reuse writer's session
+    _run_agent_plan "$writer" "pipe-writer" "Incorporate this review feedback into your original analysis:
+${review_output}
+
+Original output:
+${writer_output}" | workspace_write_agent_output "editor" 1
+  fi
 
   synthesize_round 1 "$orchestrator"
   synthesize_plan "$orchestrator"
@@ -463,6 +490,9 @@ ${writer_output}" | workspace_write_agent_output "editor" 1
 
   acpx "$writer" sessions close "pipe-writer" 2>/dev/null || true
   acpx "$reviewer" sessions close "pipe-reviewer" 2>/dev/null || true
+  if [[ "$editor_uses_writer_session" -eq 0 ]]; then
+    acpx "$editor" sessions close "pipe-editor" 2>/dev/null || true
+  fi
 }
 
 # ─── Protocol Auto-Select ──────────────────────────────────────

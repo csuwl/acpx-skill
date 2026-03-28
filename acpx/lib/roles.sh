@@ -322,21 +322,3 @@ role_infer_from_task() {
   done
 }
 
-# ─── Assign Roles to Agents ────────────────────────────────────
-
-role_assign_to_agents() {
-  local agents_str="${1:?Usage: role_assign_to_agents <agents,comma,sep> <roles,comma,sep>}"
-  local roles_str="${2:?missing roles}"
-
-  local IFS=','
-  local -a agents_arr=($agents_str)
-  local -a roles_arr=($roles_str)
-  unset IFS
-
-  local i=0
-  for agent in "${agents_arr[@]}"; do
-    local role="${roles_arr[$((i % ${#roles_arr[@]}))]:-neutral}"
-    echo "${agent}:${role}"
-    ((i++))
-  done
-}

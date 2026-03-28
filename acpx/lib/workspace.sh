@@ -57,6 +57,11 @@ DEC
 
 workspace_set_phase() {
   local phase="${1:?Usage: workspace_set_phase <plan|execute|review|done>}"
+  # Validate phase value
+  case "$phase" in
+    plan|execute|review|done) ;;
+    *) echo "Error: phase must be plan|execute|review|done, got: ${phase}" >&2; return 1 ;;
+  esac
   if [[ ! -d "$ACPX_WORKSPACE" ]]; then
     echo "Error: workspace not initialized. Run workspace_init first." >&2
     return 1
@@ -67,6 +72,11 @@ workspace_set_phase() {
 
 workspace_set_round() {
   local round="${1:?Usage: workspace_set_round <number>}"
+  # Validate round is a non-negative integer
+  if ! [[ "$round" =~ ^[0-9]+$ ]]; then
+    echo "Error: round must be a non-negative integer, got: ${round}" >&2
+    return 1
+  fi
   if [[ ! -d "$ACPX_WORKSPACE" ]]; then
     echo "Error: workspace not initialized." >&2
     return 1
@@ -159,7 +169,7 @@ workspace_add_decision() {
   escaped_text=$(printf '%s' "$text" | sed 's/[&/\]/\\&/g')
 
   # Replace the _(none yet)_ or append after the section
-  if grep -q "_((none yet))_" "$file" 2>/dev/null || grep -q "_(none yet)_" "$file" 2>/dev/null; then
+  if grep -q "_(none yet)_" "$file" 2>/dev/null; then
     sed -i.bak "/${marker}/,+1 s/_(none yet)_/- ${escaped_text}/" "$file"
     rm -f "$file.bak"
   else
@@ -225,7 +235,7 @@ workspace_gather_round() {
     fi
   done
 
-  printf '%b' "$result"
+  printf '%s' "$result"
 }
 
 # ─── Cleanup ───────────────────────────────────────────────────

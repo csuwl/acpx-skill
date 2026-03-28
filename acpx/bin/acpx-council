@@ -60,8 +60,10 @@ TASK=""
 FILE=""
 SINGLE_AGENT=""
 NUM_SESSIONS=3
+POSITIONAL_ARGS=()
 
 parse_opts() {
+  POSITIONAL_ARGS=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --protocol|-p)
@@ -77,6 +79,10 @@ parse_opts() {
       --single-agent|-s)
         SINGLE_AGENT="$2"; shift 2 ;;
       --sessions|-n)
+        if ! [[ "$2" =~ ^[1-9][0-9]*$ ]]; then
+          err "Invalid --sessions value: '$2' (must be a positive integer)"
+          exit 1
+        fi
         NUM_SESSIONS="$2"; shift 2 ;;
       --workspace|-w)
         ACPX_WORKSPACE="$2"; shift 2 ;;
@@ -91,6 +97,7 @@ parse_opts() {
             TASK="$1"
           fi
         fi
+        POSITIONAL_ARGS+=("$1")
         shift ;;
     esac
   done
@@ -356,19 +363,19 @@ USAGE
 parse_opts "$@"
 
 case "$cmd" in
-  review)     cmd_review "$@" ;;
+  review)     cmd_review "${POSITIONAL_ARGS[@]}" ;;
   council)    cmd_council ;;
   debate)     PROTOCOL="adversarial"; cmd_council ;;
   synthesize) cmd_synthesize ;;
   execute)    cmd_execute ;;
   status)     cmd_status ;;
-  roles)      cmd_roles "$@" ;;
-  workspace)  cmd_workspace "$@" ;;
+  roles)      cmd_roles "${POSITIONAL_ARGS[@]}" ;;
+  workspace)  cmd_workspace "${POSITIONAL_ARGS[@]}" ;;
   help|--help|-h)
     usage ;;
   *)
     # Treat unknown command as a task
-    TASK="$cmd $*"
+    TASK="$cmd ${POSITIONAL_ARGS[*]}"
     cmd_council
     ;;
 esac

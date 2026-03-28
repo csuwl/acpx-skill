@@ -137,6 +137,7 @@ CHKPROMPT
 
 # ─── Plan Synthesis ────────────────────────────────────────────
 # Synthesize plan-phase outputs into an actionable plan document
+# Uses the latest available round for each agent (round-2 if exists, else round-1)
 
 synthesize_plan() {
   local orchestrator="${1:-claude}"
@@ -151,8 +152,14 @@ synthesize_plan() {
     [[ -d "$agent_dir" ]] || continue
     local agent_name
     agent_name=$(basename "$agent_dir")
-    local file="${agent_dir}round-1.md"
-    if [[ -f "$file" ]]; then
+    # Use round-2 if available, otherwise fall back to round-1
+    local file=""
+    if [[ -f "${agent_dir}round-2.md" ]]; then
+      file="${agent_dir}round-2.md"
+    elif [[ -f "${agent_dir}round-1.md" ]]; then
+      file="${agent_dir}round-1.md"
+    fi
+    if [[ -n "$file" ]]; then
       all_outputs="${all_outputs}---"$'\n'"## ${agent_name}"$'\n\n'"$(cat "$file")"$'\n\n'
     fi
   done
