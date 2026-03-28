@@ -1,6 +1,6 @@
 ---
 name: acpx
-repository: https://github.com/csuwl/acpx-skill
+repository: https://github.com/csuwl/acpx-team
 description: Multi-agent collaboration and task delegation via the Agent Client Protocol (ACP) using acpx. Form agent teams from Claude Code, Codex, OpenCode, Gemini, Cursor, Copilot, OpenClaw, and other ACP-compatible agents. Run parallel workstreams, switch agent modes, orchestrate deliberation and consensus, or delegate coding tasks to another agent. Triggers include "delegate to Claude", "use Claude Code", "ask Claude to", "parallel agents", "acpx", "ACP", "agent delegation", "form a team", "council", "multi-agent", "debate", "consensus", "code review team", "security audit", "have Claude/Codex/Gemini review/implement/fix", or any request involving multiple AI agents collaborating.
 ---
 
@@ -20,13 +20,13 @@ Install the target agents you want to use (e.g., `npm i -g @anthropic-ai/claude-
 
 ```bash
 # Option 1: npm (recommended — gives you the acpx-council CLI globally)
-npm i -g acpx-skill
+npm i -g acpx-team
 
 # Option 2: git clone into your global skills directory
-git clone https://github.com/csuwl/acpx-skill.git ~/.claude/skills/acpx
+git clone https://github.com/csuwl/acpx-team.git ~/.claude/skills/acpx
 
 # Option 3: git clone into a specific project
-git clone https://github.com/csuwl/acpx-skill.git .claude/skills/acpx
+git clone https://github.com/csuwl/acpx-team.git .claude/skills/acpx
 ```
 
 After `npm i -g`, the `acpx-council` command is available everywhere.
@@ -541,6 +541,6 @@ acpx codex -s coder "implement X" && acpx gemini -s reviewer "review: $(cat resu
 - **Single-agent works**: Use `--single-agent` when you only have one agent client installed
 - **Workspace is per-directory**: `.acpx-workspace/` is created in the current directory
 
-<!-- acpx-skill · https://github.com/csuwl/acpx-skill -->
+<!-- acpx-team · https://github.com/csuwl/acpx-team -->
 
-<!-- acpx-skill by csuwl · https://github.com/csuwl/acpx-skill -->
+<!-- acpx-team by csuwl · https://github.com/csuwl/acpx-team -->

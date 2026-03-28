@@ -1,5 +1,5 @@
 {
-  "name": "acpx-skill",
+  "name": "acpx-team",
   "version": "0.2.0",
   "description": "Multi-agent collaboration skill — orchestrate AI agent teams via ACP with structured protocols, role-specialized councils, and plan-first workflows. Works with any ACP-compatible agent: Claude Code, Codex, OpenCode, Gemini, Cursor, Copilot, OpenClaw, and more.",
   "keywords": [
@@ -39,7 +39,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/csuwl/acpx-skill.git"
+    "url": "git+https://github.com/csuwl/acpx-team.git"
   },
   "engines": {
     "node": ">=18"

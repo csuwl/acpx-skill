@@ -1,4 +1,4 @@
-# acpx-skill
+# acpx-team
 
 Multi-agent collaboration skill for AI coding agents. Form agent teams, run deliberations, build consensus, and delegate work — all through the Agent Client Protocol (ACP).
 
@@ -7,7 +7,7 @@ Works with any ACP-compatible agent: Claude Code, Codex, OpenCode, Gemini CLI, C
 ## Install
 
 ```bash
-npm i -g acpx-skill
+npm i -g acpx-team
 ```
 
 Requires [acpx](https://www.npmjs.com/package/acpx) and at least one agent client (e.g. `npm i -g @anthropic-ai/claude-code`).

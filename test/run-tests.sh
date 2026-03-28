@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test/run-tests.sh — Comprehensive test suite for acpx-skill
+# test/run-tests.sh — Comprehensive test suite for acpx-team
 # Compatible with Bash 3.2+ (macOS/Linux/Windows Git Bash)
 #
 # Tests: workspace, roles, protocols, synthesize, CLI argument parsing
